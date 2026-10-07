@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: Chegada Segura API
+  version: 1.0.0
+  description: Backend Django do piloto Chegada Segura.
+servers:
+  - url: http://localhost:8000
+paths:
+  /health/: {get: {summary: Saúde, responses: {'200': {description: OK}}}}
+  /api/auth/login/:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [username,password], properties: {username: {type: string}, password: {type: string, format: password}}}}}
+      responses: {'200': {description: Tokens JWT}}
+  /api/auth/refresh/:
+    post:
+      summary: Renovar token
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [refresh], properties: {refresh: {type: string}}}}}
+      responses: {'200': {description: Novo access token}}
+  /api/tablet/student/:
+    get:
+      summary: Conferir aluno no tablet
+      parameters:
+        - {name: X-Kiosk-Key, in: header, required: true, schema: {type: string}}
+        - {name: ra, in: query, required: true, schema: {type: string}}
+        - {name: name, in: query, required: true, schema: {type: string}}
+      responses: {'200': {description: Aluno conferido}, '401': {description: Tablet não autorizado}}
+  /api/tablet/check-ins/:
+    post:
+      summary: Registrar chegada supervisionada
+      security: [{bearerAuth: []}]
+      parameters: [{name: X-Kiosk-Key, in: header, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [ra,name], properties: {ra: {type: string}, name: {type: string}, notes: {type: string}}}}}
+      responses: {'201': {description: Chegada criada}}
+  /api/arrivals/:
+    get: {summary: Listar ocorrências, security: [{bearerAuth: []}], responses: {'200': {description: Lista paginada}}}
+    post:
+      summary: Registrar ocorrência manual
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [ra,name], properties: {ra: {type: string}, name: {type: string}, notes: {type: string}}}}}
+      responses: {'201': {description: Criada}}
+  /api/arrivals/{id}/correction/:
+    patch:
+      summary: Corrigir ou cancelar ocorrência
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [action,reason], properties: {action: {type: string, enum: [UPDATE,CANCEL]}, reason: {type: string}, status: {type: string}, late_minutes: {type: integer}, notes: {type: string}}}}}
+      responses: {'200': {description: Corrigida}}
+  /api/dashboard/:
+    get: {summary: Indicadores da direção, security: [{bearerAuth: []}], responses: {'200': {description: Indicadores diários/mensais}}}
+  /api/notifications/:
+    get: {summary: Fila de notificações, security: [{bearerAuth: []}], responses: {'200': {description: Lista paginada}}}
+  /api/notifications/process-now/:
+    post: {summary: Processar fila agora, security: [{bearerAuth: []}], responses: {'200': {description: Quantidade processada}}}
+  /api/students/:
+    get: {summary: Listar alunos, security: [{bearerAuth: []}], responses: {'200': {description: Lista paginada}}}
+    post: {summary: Cadastrar aluno, security: [{bearerAuth: []}], responses: {'201': {description: Criado}}}
+  /api/classes/:
+    get: {summary: Listar turmas, security: [{bearerAuth: []}], responses: {'200': {description: Lista}}}
+    post: {summary: Criar turma, security: [{bearerAuth: []}], responses: {'201': {description: Criada}}}
+  /api/enrollments/:
+    get: {summary: Listar vínculos, security: [{bearerAuth: []}], responses: {'200': {description: Lista}}}
+    post: {summary: Criar vínculo aluno-turma, security: [{bearerAuth: []}], responses: {'201': {description: Criado}}}
+  /webhooks/whatsapp/:
+    get: {summary: Verificação do webhook WhatsApp, responses: {'200': {description: Challenge}, '403': {description: Token inválido}}}
+  /webhooks/whatsapp/status/:
+    post: {summary: Atualizar status de mensagem WhatsApp, responses: {'200': {description: Recebido}}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
